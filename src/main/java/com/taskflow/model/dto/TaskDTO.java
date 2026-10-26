@@ -4,6 +4,7 @@ import com.taskflow.model.enums.TaskPriority;
 import com.taskflow.model.enums.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,8 +23,10 @@ public class TaskDTO {
     private Long id;
 
     @NotBlank
+    @Size(max = 255)
     private String title;
 
+    @Size(max = 4000)
     private String description;
     private TaskStatus status;
     private TaskPriority priority;

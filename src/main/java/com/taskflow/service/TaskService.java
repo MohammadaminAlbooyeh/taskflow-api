@@ -1,19 +1,19 @@
 package com.taskflow.service;
 
 import com.taskflow.exception.ResourceNotFoundException;
-import com.taskflow.exception.UnauthorizedException;
 import com.taskflow.mapper.TaskMapper;
 import com.taskflow.model.dto.TaskDTO;
 import com.taskflow.model.entity.Project;
 import com.taskflow.model.entity.Task;
-import com.taskflow.model.entity.User;
 import com.taskflow.repository.TaskRepository;
 import com.taskflow.validation.TaskValidator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class TaskService {
 
     private final TaskRepository taskRepository;
@@ -38,7 +38,7 @@ public class TaskService {
         taskValidator.validate(dto);
 
         Project project = projectService.findEntity(dto.getProjectId());
-        requireProjectAccess(project, requesterEmail);
+        projectService.requireOwnerOrAdmin(project, requesterEmail);
 
         Task task = Task.builder()
                 .title(dto.getTitle())
@@ -57,17 +57,15 @@ public class TaskService {
         return taskMapper.toDTO(findEntity(id));
     }
 
-    public List<TaskDTO> getForProject(Long projectId) {
-        return taskRepository.findByProjectId(projectId).stream()
-                .map(taskMapper::toDTO)
-                .toList();
+    public Page<TaskDTO> getForProject(Long projectId, Pageable pageable) {
+        return taskRepository.findByProjectId(projectId, pageable).map(taskMapper::toDTO);
     }
 
     public TaskDTO update(Long id, TaskDTO dto, String requesterEmail) {
         taskValidator.validate(dto);
 
         Task task = findEntity(id);
-        requireProjectAccess(task.getProject(), requesterEmail);
+        projectService.requireOwnerOrAdmin(task.getProject(), requesterEmail);
 
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
@@ -81,19 +79,12 @@ public class TaskService {
 
     public void delete(Long id, String requesterEmail) {
         Task task = findEntity(id);
-        requireProjectAccess(task.getProject(), requesterEmail);
+        projectService.requireOwnerOrAdmin(task.getProject(), requesterEmail);
         taskRepository.delete(task);
     }
 
     private Task findEntity(Long id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + id));
-    }
-
-    private void requireProjectAccess(Project project, String requesterEmail) {
-        User owner = project.getOwner();
-        if (!owner.getEmail().equals(requesterEmail)) {
-            throw new UnauthorizedException("You do not have access to this project's tasks");
-        }
     }
 }

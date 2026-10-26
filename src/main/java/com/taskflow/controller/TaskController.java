@@ -3,13 +3,13 @@ package com.taskflow.controller;
 import com.taskflow.model.dto.TaskDTO;
 import com.taskflow.service.TaskService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -34,8 +34,8 @@ public class TaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskDTO>> getForProject(@RequestParam Long projectId) {
-        return ResponseEntity.ok(taskService.getForProject(projectId));
+    public ResponseEntity<Page<TaskDTO>> getForProject(@RequestParam Long projectId, Pageable pageable) {
+        return ResponseEntity.ok(taskService.getForProject(projectId, pageable));
     }
 
     @PutMapping("/{id}")

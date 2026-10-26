@@ -12,12 +12,14 @@ public class RegisterRequest {
 
     @NotBlank
     @Email
+    @Size(max = 255)
     private String email;
 
     @NotBlank
-    @Size(min = 8)
+    @Size(min = 8, max = 72)
     private String password;
 
     @NotBlank
+    @Size(max = 255)
     private String fullName;
 }

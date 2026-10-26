@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -72,9 +73,9 @@ class TaskControllerTest {
     @Test
     @WithMockUser(username = "owner@taskflow.dev")
     void getForProject_returnsTaskList() throws Exception {
-        when(taskService.getForProject(1L)).thenReturn(List.of(
+        when(taskService.getForProject(eq(1L), any())).thenReturn(new PageImpl<>(List.of(
                 TaskDTO.builder().id(1L).title("Task 1").projectId(1L).build()
-        ));
+        )));
 
         mockMvc.perform(get("/api/tasks").param("projectId", "1"))
                 .andExpect(status().isOk());

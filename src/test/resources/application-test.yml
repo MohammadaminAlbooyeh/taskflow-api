@@ -14,3 +14,4 @@ spring:
 jwt:
   secret: test-secret-key-for-jwt-signing-in-unit-tests-only
   expiration-ms: 3600000
+  refresh-expiration-ms: 604800000

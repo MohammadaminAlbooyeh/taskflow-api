@@ -21,6 +21,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,6 +71,8 @@ class TaskServiceTest {
     @Test
     void create_byNonProjectOwner_throwsUnauthorized() {
         when(projectService.findEntity(10L)).thenReturn(project);
+        doThrow(new UnauthorizedException("You do not have access to this project"))
+                .when(projectService).requireOwnerOrAdmin(project, "intruder@taskflow.dev");
 
         TaskDTO dto = TaskDTO.builder().title("Task").projectId(10L).build();
 
@@ -96,5 +99,33 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> taskService.delete(99L, "owner@taskflow.dev"))
                 .isInstanceOf(com.taskflow.exception.ResourceNotFoundException.class);
+    }
+
+    @Test
+    void create_withAssigneeThatDoesNotExist_throwsResourceNotFound() {
+        when(projectService.findEntity(10L)).thenReturn(project);
+        when(userService.getEntityById(999L))
+                .thenThrow(new com.taskflow.exception.ResourceNotFoundException("User not found: 999"));
+
+        TaskDTO dto = TaskDTO.builder().title("Task").projectId(10L).assigneeId(999L).build();
+
+        assertThatThrownBy(() -> taskService.create(dto, "owner@taskflow.dev"))
+                .isInstanceOf(com.taskflow.exception.ResourceNotFoundException.class);
+    }
+
+    @Test
+    void update_reassignsTaskToNewAssignee() {
+        Task existing = Task.builder().id(5L).title("Task").project(project).build();
+        User newAssignee = User.builder().id(2L).email("assignee@taskflow.dev").build();
+
+        when(taskRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(userService.getEntityById(2L)).thenReturn(newAssignee);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskDTO dto = TaskDTO.builder().title("Task").projectId(10L).assigneeId(2L).build();
+
+        TaskDTO result = taskService.update(5L, dto, "owner@taskflow.dev");
+
+        assertThat(result.getAssigneeId()).isEqualTo(2L);
     }
 }

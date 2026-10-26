@@ -2,7 +2,10 @@ package com.taskflow.controller;
 
 import com.taskflow.model.dto.UserDTO;
 import com.taskflow.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +29,14 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getById(id));
+    public ResponseEntity<UserDTO> getById(@PathVariable Long id,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.getByIdForRequester(id, userDetails.getUsername()));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<UserDTO>> getAll(Pageable pageable) {
+        return ResponseEntity.ok(userService.getAll(pageable));
     }
 }

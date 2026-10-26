@@ -5,13 +5,16 @@ import com.taskflow.exception.UnauthorizedException;
 import com.taskflow.mapper.ProjectMapper;
 import com.taskflow.model.dto.ProjectDTO;
 import com.taskflow.model.entity.Project;
+import com.taskflow.model.entity.Role;
 import com.taskflow.model.entity.User;
 import com.taskflow.repository.ProjectRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
@@ -40,16 +43,14 @@ public class ProjectService {
         return projectMapper.toDTO(findEntity(id));
     }
 
-    public List<ProjectDTO> getForOwner(String ownerEmail) {
+    public Page<ProjectDTO> getForOwner(String ownerEmail, Pageable pageable) {
         User owner = userService.getEntityByEmail(ownerEmail);
-        return projectRepository.findByOwnerId(owner.getId()).stream()
-                .map(projectMapper::toDTO)
-                .toList();
+        return projectRepository.findByOwnerId(owner.getId(), pageable).map(projectMapper::toDTO);
     }
 
     public ProjectDTO update(Long id, ProjectDTO dto, String requesterEmail) {
         Project project = findEntity(id);
-        requireOwner(project, requesterEmail);
+        requireOwnerOrAdmin(project, requesterEmail);
 
         project.setName(dto.getName());
         project.setDescription(dto.getDescription());
@@ -59,7 +60,7 @@ public class ProjectService {
 
     public void delete(Long id, String requesterEmail) {
         Project project = findEntity(id);
-        requireOwner(project, requesterEmail);
+        requireOwnerOrAdmin(project, requesterEmail);
         projectRepository.delete(project);
     }
 
@@ -68,8 +69,12 @@ public class ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + id));
     }
 
-    private void requireOwner(Project project, String requesterEmail) {
-        if (!project.getOwner().getEmail().equals(requesterEmail)) {
+    void requireOwnerOrAdmin(Project project, String requesterEmail) {
+        if (project.getOwner().getEmail().equals(requesterEmail)) {
+            return;
+        }
+        User requester = userService.getEntityByEmail(requesterEmail);
+        if (requester.getRole() != Role.ADMIN) {
             throw new UnauthorizedException("You do not have access to this project");
         }
     }

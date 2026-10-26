@@ -1,13 +1,19 @@
 package com.taskflow.service;
 
 import com.taskflow.exception.ResourceNotFoundException;
+import com.taskflow.exception.UnauthorizedException;
 import com.taskflow.mapper.UserMapper;
 import com.taskflow.model.dto.UserDTO;
+import com.taskflow.model.entity.Role;
 import com.taskflow.model.entity.User;
 import com.taskflow.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class UserService {
 
     private final UserRepository userRepository;
@@ -22,6 +28,18 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
         return userMapper.toDTO(user);
+    }
+
+    public UserDTO getByIdForRequester(Long id, String requesterEmail) {
+        User requester = getEntityByEmail(requesterEmail);
+        if (!requester.getId().equals(id) && requester.getRole() != Role.ADMIN) {
+            throw new UnauthorizedException("You do not have access to this user's profile");
+        }
+        return getById(id);
+    }
+
+    public Page<UserDTO> getAll(Pageable pageable) {
+        return userRepository.findAll(pageable).map(userMapper::toDTO);
     }
 
     public UserDTO getByEmail(String email) {
